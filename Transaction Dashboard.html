@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Dashboard</title>
+    <link rel="stylesheet" href="./Transaction.js">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+    font-family: Arial, sans-serif;
+    background-color: rgb(219, 217, 215);
+  }
+  .container {
+    width: 80%;
+    margin: 0 auto;
+  }
+  
+  .month-select {
+    margin-bottom: 10px;
+  }
+  
+  .search-input {
+    margin-bottom: 10px;
+  }
+  
+  .transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .transactions-table th,
+  .transactions-table td {
+    padding: 10px;
+    border:1px solid #dcd9d9;
+    text-align: left;
+  }
+  
+  .transactions-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <select class="month-select" onchange="fetchData(this.value)">
+          <option value="1">Jan</option>
+          <option value="2">Feb</option>
+          <option value="3" selected>Mar</option>
+          <option value="4">Apr</option>
+          <option value="5">May</option>
+          <option value="6">Jun</option>
+          <option value="7">Jul</option>
+          <option value="8">Aug</option>
+          <option value="9">Sep</option>
+          <option value="10">Oct</option>
+          <option value="11">Nov</option>
+          <option value="12">Dec</option>
+        </select>
+        <input type="search" class="search-input" placeholder="Search transaction">
+        <div class="statistics">
+          <div>Total Sale Amount: <span id="totalSaleAmount"></span></div>
+          <div>Total Sold Items: <span id="totalSoldItems"></span></div>
+          <div>Total Not Sold Items: <span id="totalNotSoldItems"></span></div>
+        </div>
+        <canvas id="priceRangeChart"></canvas>
+        <table class="transactions-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Price</th>
+              <th>Category</th>
+              <th>Sold</th>
+              <th>Image</th>
+            </tr>
+          </thead>
+          <tbody class="transactions-body">
+          </tbody>
+        </table>
+        <div class="pages">
+          <button class="prev-btn">Previous</button>
+          <span class="page-info"></span>
+          <button class="next-btn">Next</button>
+        </div>
+      </div>
+
+      <script>
+        async function fetchData(month) {
+          try {
+            const response = await fetch(`your-api-url?month=${month}`);
+            const data = await response.json();
+            displayStatistics(data);
+            displayBarChart(data);
+          } catch (error) {
+            console.error('Error fetching data:', error);
+          }
+        }
+
+        function displayStatistics(data) {
+          const totalSaleAmount = data.reduce((acc, curr) => acc + parseFloat(curr.price), 0);
+          const totalSoldItems = data.filter(item => item.sold === 'Yes').length;
+          const totalNotSoldItems = data.filter(item => item.sold === 'No').length;
+
+          document.getElementById('totalSaleAmount').textContent = totalSaleAmount.toFixed(2);
+          document.getElementById('totalSoldItems').textContent = totalSoldItems;
+          document.getElementById('totalNotSoldItems').textContent = totalNotSoldItems;
+        }
+
+        function displayBarChart(data) {
+          const prices = data.map(item => parseFloat(item.price));
+
+          const priceRanges = {
+            '0-100': 0,
+            '101-200': 0,
+            '201-300': 0,
+            '301-400': 0,
+            '401-500': 0,
+            '501+': 0
+          };
+
+          prices.forEach(price => {
+            if (price <= 100) {
+              priceRanges['0-100']++;
+            } else if (price <= 200) {
+              priceRanges['101-200']++;
+            } else if (price <= 300) {
+              priceRanges['201-300']++;
+            } else if (price <= 400) {
+              priceRanges['301-400']++;
+            } else if (price <= 500) {
+              priceRanges['401-500']++;
+            } else {
+              priceRanges['501+']++;
+            }
+          });
+
+          const ctx = document.getElementById('priceRangeChart').getContext('2d');
+          const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: Object.keys(priceRanges),
+              datasets: [{
+                label: 'Number of Items',
+                data: Object.values(priceRanges),
+                backgroundColor: [
+                  'rgba(255, 99, 132, 0.5)',
+                  'rgba(54, 162, 235, 0.5)',
+                  'rgba(255, 206, 86, 0.5)',
+                  'rgba(75, 192, 192, 0.5)',
+                  'rgba(153, 102, 255, 0.5)',
+                  'rgba(255, 159, 64, 0.5)'
+                ],
+                borderColor: [
+                  'rgba(255, 99, 132, 1)',
+                  'rgba(54, 162, 235, 1)',
+                  'rgba(255, 206, 86, 1)',
+                  'rgba(75, 192, 192, 1)',
+                  'rgba(153, 102, 255, 1)',
+                  'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+              }]
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        }
+
+        const transactions = [
+          {
+            id: 1,
+            title: 'Transaction1',
+            description: 'Description1',
+            price: '100',
+            category: 'Category 1',
+            sold: 'Yes',
+            image: 'https://via.placeholder.com/10',
+          },
+          
+        ];
+
+        const transactionsTableBody = document.querySelector('.transactions-body');
+
+        transactions.forEach((transaction) => {
+          const row = document.createElement('tr');
+
+          const idCell = document.createElement('td');
+          idCell.textContent = transaction.id;
+          row.appendChild(idCell);
+
+          const titleCell = document.createElement('td');
+          titleCell.textContent = transaction.title;
+          row.appendChild(titleCell);
+
+          const descriptionCell = document.createElement('td');
+          descriptionCell.textContent = transaction.description;
+          row.appendChild(descriptionCell);
+
+          const priceCell = document.createElement('td');
+          priceCell.textContent = transaction.price;
+          row.appendChild(priceCell);
+
+          const categoryCell = document.createElement('td');
+          categoryCell.textContent = transaction.category;
+          row.appendChild(categoryCell);
+
+          const soldCell = document.createElement('td');
+          soldCell.textContent = transaction.sold;
+          row.appendChild(soldCell);
+
+          const imageCell = document.createElement('td');
+          const image = document.createElement('img');
+          image.src = transaction.image;
+          image.alt = transaction.title;
+          imageCell.appendChild(image);
+          row.appendChild(imageCell);
+
+          transactionsTableBody.appendChild(row);
+        });
+      </script>
+</body>
+</html>
